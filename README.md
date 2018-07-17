@@ -19,4 +19,4 @@ Place **config.json** in the same folder as main.go.
   "UNITS": "metric"
 }
 ````
-To read all the information about API values, please visut [OpenWeatherMap site](https://openweathermap.org/forecast5). 
+To read all the information about API values, please visit [OpenWeatherMap site](https://openweathermap.org/forecast5). 
