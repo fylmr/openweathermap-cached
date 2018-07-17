@@ -8,7 +8,7 @@ With some pretty easy modifications, you can use it for any other API and simple
 Place **config.json** in the same folder as main.go.
 
 **config.json** should have structure like so:
-````
+````json
 {
   "WEATHER_HOST": "http://api.openweathermap.org/data/2.5/forecast",
   "API_KEY": "YOUR_API_KEY",
