@@ -59,6 +59,7 @@ func GetCachedWeather(lat string, lon string, cacheDuration int) (res string, er
 	}
 
 	// Saving cache file to variable
+	setCachedTime(filename)
 	setCachedWeather(filename, weather)
 
 	return weather, nil
