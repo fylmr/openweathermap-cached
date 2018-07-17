@@ -1,19 +1,22 @@
 package fileCache
 
 import (
-	"os"
-	"time"
-	"io/ioutil"
-	"strings"
-	"errors"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
+	"io/ioutil"
+	"os"
+	"strings"
+	"time"
+	"log"
 )
 
 const defaultFileLocation = "storage/"
 
-func GetCacheWeather(lat string, lng string, cacheDuration int) (res string, err error) {
-	fileNameHash := GetMD5Hash(lat + lng)
+func GetCacheWeather(lat string, lon string, cacheDuration int) (res string, err error) {
+	log.Printf("Getting weather from cache. lat=%s, lon=%s", lat, lon)
+
+	fileNameHash := GetMD5Hash(lat + lon)
 	cityWeatherFilename := getCityFileName(fileNameHash)
 
 	cacheFile, err := os.Open(cityWeatherFilename)
@@ -21,6 +24,7 @@ func GetCacheWeather(lat string, lng string, cacheDuration int) (res string, err
 	if err != nil {
 		return "", err
 	}
+
 	defer cacheFile.Close()
 
 	cacheStats, err := cacheFile.Stat()
@@ -43,18 +47,22 @@ func GetCacheWeather(lat string, lng string, cacheDuration int) (res string, err
 	return cacheWeather, nil
 }
 
-func WriteWeatherToFile(lat string, lng string, weather string) (err error) {
-	fileNameHash := GetMD5Hash(lat + lng)
+func WriteWeatherToFile(lat string, lon string, weather string) (err error) {
+	if weather == "" {
+		return errors.New("weather is empty string")
+	}
+
+	fileNameHash := GetMD5Hash(lat + lon)
 	fileName := getCityFileName(fileNameHash)
+
 	file, err := os.Create(fileName)
 
 	if err != nil {
-		println()
-		println("Cant create file: " + fileName)
-		println("Does directory 'storage' exists?")
-		println()
+		log.Println("Couldn't create file " + fileName)
+		log.Println("Does directory 'storage' exist?")
 		return err
 	}
+
 	defer file.Close()
 
 	file.WriteString(weather)
@@ -64,6 +72,7 @@ func WriteWeatherToFile(lat string, lng string, weather string) (err error) {
 
 func readFile(fileName string) (res string, err error) {
 	bs, err := ioutil.ReadFile(fileName)
+
 	if err != nil {
 		return "", err
 	}
