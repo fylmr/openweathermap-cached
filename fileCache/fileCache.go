@@ -13,47 +13,71 @@ import (
 
 const defaultFileLocation = "storage/"
 
-func GetCacheWeather(lat string, lon string, cacheDuration int) (res string, err error) {
+var cachedTime map[string]time.Time
+var cachedWeather map[string]string
+
+func GetCachedWeather(lat string, lon string, cacheDuration int) (res string, err error) {
 	log.Printf("Getting weather from cache. lat=%s, lon=%s", lat, lon)
 
-	fileNameHash := GetMD5Hash(lat + lon)
-	cityWeatherFilename := getCityFileName(fileNameHash)
+	latLonHash := GetMD5Hash(lat + lon)
+	filename := getFileName(latLonHash)
 
-	cacheFile, err := os.Open(cityWeatherFilename)
-
-	if err != nil {
-		return "", err
-	}
-
-	defer cacheFile.Close()
-
-	cacheStats, err := cacheFile.Stat()
-
-	if err != nil {
-		return "", err
-	}
-
-	fileAge := time.Now().Sub(cacheStats.ModTime())
-	if fileAge > time.Duration(cacheDuration)*time.Minute {
+	// Checking if cache duration expired
+	fileTime, exists := cachedTime[filename]
+	if exists && isExpired(fileTime, cacheDuration) {
 		return "", errors.New("cache expired")
 	}
 
-	cacheWeather, err := readFile(cityWeatherFilename)
+	// Checking if we have requested weather stored in a variable
+	variableWeather, exists := cachedWeather[filename]
+	if exists {
+		return variableWeather, nil
+	}
 
+	// Opening file
+	cacheFile, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer cacheFile.Close()
+
+	// Getting file statistics
+	cacheStats, err := cacheFile.Stat()
 	if err != nil {
 		return "", err
 	}
 
-	return cacheWeather, nil
-}
-
-func WriteWeatherToFile(lat string, lon string, weather string) (err error) {
-	if weather == "" {
-		return errors.New("weather is empty string")
+	// Checking if cache duration expired
+	if isExpired(cacheStats.ModTime(), cacheDuration) {
+		return "", errors.New("cache expired")
 	}
 
-	fileNameHash := GetMD5Hash(lat + lon)
-	fileName := getCityFileName(fileNameHash)
+	// Reading file content
+	weather, err := readFile(filename)
+	if err != nil {
+		return "", err
+	}
+
+	// Saving cache file to variable
+	setCachedWeather(filename, weather)
+
+	return weather, nil
+}
+
+// Compares current time and cacheTime.
+// Returns true if difference is bigger than duration.
+func isExpired(cacheTime time.Time, duration int) bool {
+	diff := time.Now().Sub(cacheTime)
+	if diff > time.Duration(duration)*time.Minute {
+		return true
+	}
+
+	return false
+}
+
+func SaveToCache(lat string, lon string, weather string) (err error) {
+	latLonHash := GetMD5Hash(lat + lon)
+	fileName := getFileName(latLonHash)
 
 	file, err := os.Create(fileName)
 
@@ -67,7 +91,25 @@ func WriteWeatherToFile(lat string, lon string, weather string) (err error) {
 
 	file.WriteString(weather)
 
+	// Saving to variables
+	setCachedTime(fileName)
+	setCachedWeather(fileName, weather)
+
 	return nil
+}
+
+func setCachedWeather(fileName string, weather string) {
+	if cachedWeather == nil {
+		cachedWeather = make(map[string]string)
+	}
+	cachedWeather[fileName] = weather
+}
+
+func setCachedTime(fileName string) {
+	if cachedTime == nil {
+		cachedTime = make(map[string]time.Time)
+	}
+	cachedTime[fileName] = time.Now()
 }
 
 func readFile(fileName string) (res string, err error) {
@@ -82,7 +124,7 @@ func readFile(fileName string) (res string, err error) {
 	return str, nil
 }
 
-func getCityFileName(city string) string {
+func getFileName(city string) string {
 	return defaultFileLocation + strings.ToLower(city) + ".json"
 }
 

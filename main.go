@@ -39,6 +39,8 @@ func main() {
 		Handler:      r,
 	}
 
+	log.Println("Listening at", config.SERVER_IP + ":" + config.SERVER_PORT)
+
 	log.Fatal(srv.ListenAndServe()) // Server launching
 }
 
@@ -48,7 +50,7 @@ func LatLon(writer http.ResponseWriter, request *http.Request) {
 	lat := vars["lat"]
 	lon := vars["lon"]
 
-	weather, err := fileCache.GetCacheWeather(lat, lon, config.CACHE_TIME)
+	weather, err := fileCache.GetCachedWeather(lat, lon, config.CACHE_TIME)
 
 	if err == nil {
 		showJson(writer, weather)
@@ -56,8 +58,8 @@ func LatLon(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	weather, err = getWeatherFromInternet(lat, lon)
-	if err != nil {
-		fileCache.WriteWeatherToFile(lat, lon, weather)
+	if err == nil {
+		fileCache.SaveToCache(lat, lon, weather)
 	}
 
 	showJson(writer, weather)
@@ -69,7 +71,6 @@ func showJson(writer http.ResponseWriter, weather string) {
 	writer.Write([]byte(weather))
 }
 
-// Returns empty string if had any errors
 func getWeatherFromInternet(lat string, lon string) (weather string, err error) {
 	log.Println("Getting weather from the server...")
 
